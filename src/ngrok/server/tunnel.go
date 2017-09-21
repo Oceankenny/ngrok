@@ -22,6 +22,11 @@ var defaultPortMap = map[string]int{
 	"smtp":  25,
 }
 
+const startAllowedPort = 11000
+const totalAllowedPortNum = 100
+
+var flags []bool = make([]bool, 100)
+
 /**
  * Tunnel: A control connection, metadata and proxy connections which
  *         route public traffic to a firewalled endpoint.
@@ -155,7 +160,7 @@ func NewTunnel(m *msg.ReqTunnel, ctl *Control) (t *Tunnel, err error) {
 		}
 
 		// Bind for TCP connections
-		bindTcp(0)
+		bindTcp(selectPortFromRange())
 		return
 
 	case "http", "https":
@@ -186,6 +191,41 @@ func NewTunnel(m *msg.ReqTunnel, ctl *Control) (t *Tunnel, err error) {
 	return
 }
 
+func selectPortFromRange() int {
+	var selectedPort = 0
+
+	for i, b := range flags {
+		if b == false {
+			selectedPort = startAllowedPort + i
+			flags[i] = true
+			break
+		}
+	}
+	log.Info("select port: %d\n", selectedPort)
+	return selectedPort
+}
+
+func resetPortSelectFlag(url string) {
+	log.Info("resetPortSelectFlag for url: %s", url)
+	if url != "" {
+		var port int
+		parts := strings.Split(url, ":")
+		portPart := parts[len(parts)-1]
+		port, err := strconv.Atoi(portPart)
+		if err != nil {
+			log.Error("Failed to parse url port as integer: %s", portPart)
+		} else {
+			selectedPortSlot := port - startAllowedPort
+			if selectedPortSlot >= 0 {
+				flags[selectedPortSlot] = false
+				log.Info("release port: %d", port)
+			} else {
+				log.Error("port is out of assigned range")
+			}
+		}
+	}
+}
+
 func (t *Tunnel) Shutdown() {
 	t.Info("Shutting down")
 
@@ -199,6 +239,7 @@ func (t *Tunnel) Shutdown() {
 
 	// remove ourselves from the tunnel registry
 	tunnelRegistry.Del(t.url)
+	resetPortSelectFlag(t.url)
 
 	// let the control connection know we're shutting down
 	// currently, only the control connection shuts down tunnels,

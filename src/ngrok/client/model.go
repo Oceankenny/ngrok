@@ -21,6 +21,7 @@ import (
 )
 
 const (
+	//	defaultServerAddr   = "tunnel.mydomain:4443"
 	defaultServerAddr   = "ngrokd.ngrok.com:443"
 	defaultInspectAddr  = "127.0.0.1:4040"
 	pingInterval        = 20 * time.Second

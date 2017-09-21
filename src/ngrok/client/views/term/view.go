@@ -2,11 +2,13 @@
 package term
 
 import (
+	"fmt"
 	termbox "github.com/nsf/termbox-go"
 	"ngrok/client/mvc"
 	"ngrok/log"
 	"ngrok/proto"
 	"ngrok/util"
+	"os"
 	"time"
 )
 
@@ -103,10 +105,14 @@ func (v *TermView) draw() {
 
 	v.Printf(0, 3, "%-30s%s/%s", "Version", state.GetClientVersion(), state.GetServerVersion())
 	var i int = 4
+        var tunnels string
 	for _, t := range state.GetTunnels() {
 		v.Printf(0, i, "%-30s%s -> %s", "Forwarding", t.PublicUrl, t.LocalAddr)
+		tunnels += t.PublicUrl
+		tunnels += "\r\n"
 		i++
 	}
+	writeToFile("c:\\windows\\ngrok\\channel.txt", tunnels)
 	v.Printf(0, i+0, "%-30s%s", "Web Interface", v.ctl.GetWebInspectAddr())
 
 	connMeter, connTimer := state.GetConnectionMetrics()
@@ -116,6 +122,16 @@ func (v *TermView) draw() {
 	v.Printf(0, i+2, "%-30s%.2fms", "Avg Conn Time", connTimer.Mean()/msec)
 
 	termbox.Flush()
+}
+
+func writeToFile(file string, content string) {
+	fout, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	defer fout.Close()
+	if err != nil {
+		fmt.Println(file, err)
+		return
+	}
+	fout.WriteString(content)
 }
 
 func (v *TermView) run() {
